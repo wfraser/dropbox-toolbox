@@ -5,8 +5,10 @@ edition = "2021"
 authors = ["Bill Fraser <bill@wfraser.dev>"]
 
 [dependencies.dropbox-sdk]
-version = "0.16.0"
-features = ["dbx_files"]
+version = "0.17.0"
+default-features = false
+features = ["dbx_files", "default_client"]
+
 
 [dependencies]
 log = "0.4, <0.4.19"
