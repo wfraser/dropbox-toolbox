@@ -1,0 +1,14 @@
+[package]
+name = "dropbox-toolbox"
+version = "0.1.0"
+edition = "2021"
+authors = ["Bill Fraser <bill@wfraser.dev>"]
+
+[dependencies.dropbox-sdk]
+version = "0.16.0"
+features = ["dbx_files"]
+
+[dependencies]
+log = "0.4, <0.4.19"
+parallel_reader = "0.1.2"
+ring = "0.17.5"
