@@ -1,3 +1,12 @@
+//! Dropbox-Toolbox is a simple, user-friendly SDK for working with Dropbox.
+//!
+//! This crate builds on the [dropbox-sdk](https://github.com/dropbox/dropbox-sdk-rust) crate, which
+//! provides a canonical, complete set of Rust bindings to the Dropbox API, but is somewhat
+//! difficult to use due to its low-level nature. This crate aims to be an easier-to-use, more
+//! high-level SDK, albeit one with smaller surface area.
+
+#![deny(missing_docs)]
+
 #[macro_use]
 extern crate log;
 
@@ -11,16 +20,28 @@ pub mod upload;
 /// The size of a block. This is a Dropbox constant, not adjustable.
 pub const BLOCK_SIZE: usize = 4 * 1024 * 1024;
 
+/// An error from calling the Dropbox API, either client-side or server-side.
 pub enum Error<E> {
-    /// An error returned from the API.
+    /// An error returned from the Dropbox API.
     Api(E),
 
     /// A client-side error encountered in making an API call.
     Other(dropbox_sdk::Error),
 }
 
-trait ResultExt<T, E: StdError> {
+/// The Dropbox SDK returns nested results of the form `Result<Result<T, E>, dropbox_sdk::Error>`,
+/// where the outer result is used to report general client-side errors, and the inner result
+/// reports success or strongly-typed error results from the API itself.
+///
+/// This extension trait is for translating these nested results into the [`Error`] and
+/// [`BoxedError`] types in this crate.
+pub trait ResultExt<T, E: StdError> {
+    /// Combine a nested `Result<Result<T, E>, dropbox_sdk::Error>` from the Dropbox SDK into a
+    /// result which uses the [`Error`] enum in this crate.
     fn combine(self) -> Result<T, Error<E>>;
+
+    /// Combine a nested result into a result which uses the [`BoxedError`] type in this crate.
+    /// Useful when generics are not desired.
     fn boxed(self) -> Result<T, BoxedError>;
 }
 
@@ -85,7 +106,8 @@ impl<E: StdError> StdError for Error<E> {
     }
 }
 
-//pub type BoxedError = Box<dyn StdError + Send + Sync>;
+/// Combines the various kinds of errors in [`Error`] into a boxed error without type variables,
+/// which can be downcasted to specific errors if desired.
 pub struct BoxedError(Box<dyn StdError + Send + Sync>);
 
 impl std::ops::Deref for BoxedError {

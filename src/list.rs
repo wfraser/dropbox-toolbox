@@ -1,4 +1,4 @@
-//! Helpers for listing directories.
+//! Functions for listing directories.
 
 use std::collections::VecDeque;
 use std::thread::sleep;

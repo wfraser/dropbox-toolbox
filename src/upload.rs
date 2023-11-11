@@ -1,4 +1,4 @@
-//! Helper functions for uploading files.
+//! Functions for uploading files.
 
 use std::collections::HashMap;
 use std::io::Read;
