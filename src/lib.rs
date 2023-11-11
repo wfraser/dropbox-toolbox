@@ -125,3 +125,17 @@ impl<E: StdError + Send + Sync + 'static> From<Error<E>> for BoxedError {
         })
     }
 }
+
+impl Debug for BoxedError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
+}
+
+impl Display for BoxedError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
+impl StdError for BoxedError {}
