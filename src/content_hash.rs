@@ -69,7 +69,7 @@ impl ContentHash {
 
     /// Read and hash a byte stream.
     pub fn read_stream(&mut self, mut stream: impl Read) -> io::Result<()> {
-        let mut buf = [0u8; BLOCK_SIZE];
+        let mut buf = vec![0u8; BLOCK_SIZE];
         loop {
             let nread = match stream.read(&mut buf) {
                 Ok(0) => break,
