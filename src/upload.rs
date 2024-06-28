@@ -9,9 +9,10 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use crate::content_hash::ContentHash;
-use crate::{BoxedError, Error, ResultExt, BLOCK_SIZE};
-use dropbox_sdk::files::{UploadSessionAppendError, UploadSessionFinishError};
-use dropbox_sdk::{files, UserAuthClient};
+use crate::BLOCK_SIZE;
+use dropbox_sdk::{BoxedError, Error};
+use dropbox_sdk::files::{self, UploadSessionAppendError, UploadSessionFinishError};
+use dropbox_sdk::UserAuthClient;
 
 /// Options for how to perform uploads.
 #[derive(Clone)]
@@ -96,7 +97,7 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
                 .with_session_type(files::UploadSessionType::Concurrent),
             &[],
         )
-        .combine()?
+        .map_err(Error::boxed)?
         .session_id;
 
         Ok(Self {
@@ -178,11 +179,11 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
         };
 
         result.map_err(|e| match e {
-            parallel_reader::Error::Read(e) => Error::Other(e.into()),
+            parallel_reader::Error::Read(e) => Error::HttpClient(e.into()),
             parallel_reader::Error::Process {
                 chunk_offset: _,
                 error,
-            } => error,
+            } => error.boxed(),
         })?;
 
         let final_len = self.inner.complete_up_to();
@@ -217,20 +218,20 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
         let mut errors = 0;
         loop {
             match files::upload_session_finish(self.client.as_ref(), &finish, &[]) {
-                Ok(Ok(file_metadata)) => {
+                Ok(file_metadata) => {
                     info!(
                         "Upload succeeded: {}",
                         file_metadata.path_display.as_deref().unwrap_or("?")
                     );
                     return Ok(file_metadata);
                 }
-                error => {
+                Err(e) => {
                     errors += 1;
                     if errors == 3 {
-                        error!("Error committing upload: {:?}, failing.", error);
-                        return error.combine();
+                        error!("Error committing upload: {e}, failing.");
+                        return Err(e);
                     } else {
-                        warn!("Error committing upload: {:?}, retrying.", error);
+                        warn!("Error committing upload: {e}, retrying.");
                         sleep(Duration::from_secs(1));
                     }
                 }
@@ -261,10 +262,10 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
         let mut backoff = opts.initial_backoff_time;
         loop {
             match files::upload_session_append_v2(client, arg, buf) {
-                Ok(Ok(())) => {
+                Ok(()) => {
                     break;
                 }
-                Err(dropbox_sdk::Error::RateLimited {
+                Err(Error::RateLimited {
                     reason,
                     retry_after_seconds,
                 }) => {
@@ -276,16 +277,13 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
                         sleep(Duration::from_secs(u64::from(retry_after_seconds)));
                     }
                 }
-                error => {
+                Err(e) => {
                     errors += 1;
                     if errors == opts.retry_count {
-                        warn!("Error calling upload_session_append: {:?}, failing.", error);
-                        return error.combine();
+                        warn!("Error calling upload_session_append: {e}, failing.");
+                        return Err(e);
                     } else {
-                        warn!(
-                            "Error calling upload_session_append: {:?}, retrying.",
-                            error
-                        );
+                        warn!("Error calling upload_session_append: {e}, retrying.");
                     }
                     sleep(jitter(backoff));
                     if backoff < opts.max_backoff_time {

@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::thread::sleep;
 use std::time::Duration;
 
-use crate::{BoxedError, Error, ResultExt};
+use dropbox_sdk::{BoxedError, Error};
 use dropbox_sdk::files::ListFolderContinueError;
 use dropbox_sdk::{files, UserAuthClient};
 
@@ -28,7 +28,7 @@ pub fn list_directory<'a, T: UserAuthClient>(
         client,
         files::list_folder,
         &files::ListFolderArg::new(requested_path).with_recursive(recursive),
-    )?;
+    ).map_err(Error::boxed)?;
     let cursor = if result.has_more {
         Some(result.cursor)
     } else {
@@ -87,7 +87,7 @@ impl<'a, T: UserAuthClient> Iterator for DirectoryIterator<'a, T> {
 
 fn list_folder_internal<T, A, E>(
     client: &T,
-    f: impl Fn(&T, &A) -> Result<Result<files::ListFolderResult, E>, dropbox_sdk::Error>,
+    f: impl Fn(&T, &A) -> Result<files::ListFolderResult, Error<E>>,
     arg: &A,
 ) -> Result<files::ListFolderResult, Error<E>>
 where
@@ -98,26 +98,23 @@ where
     let mut errors = 0;
     loop {
         match f(client, arg) {
-            Ok(Ok(r)) => break Ok(r),
-            Err(dropbox_sdk::Error::RateLimited {
+            Ok(r) => break Ok(r),
+            Err(Error::RateLimited {
                 reason,
                 retry_after_seconds,
             }) => {
-                warn!(
-                    "rate-limited ({}), waiting {} seconds",
-                    reason, retry_after_seconds
-                );
+                warn!("rate-limited ({reason}), waiting {retry_after_seconds} seconds");
                 if retry_after_seconds > 0 {
                     sleep(Duration::from_secs(u64::from(retry_after_seconds)));
                 }
             }
-            error => {
+            Err(e) => {
                 errors += 1;
                 if errors == 3 {
-                    warn!("Error calling list_folder_continue: {:?}, failing", error);
-                    return error.combine();
+                    warn!("Error calling list_folder_continue: {e}, failing");
+                    return Err(e);
                 } else {
-                    warn!("Error calling list_folder_continue: {:?}, retrying.", error);
+                    warn!("Error calling list_folder_continue: {e}, retrying.");
                 }
             }
         }

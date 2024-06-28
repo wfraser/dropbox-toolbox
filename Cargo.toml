@@ -5,12 +5,16 @@ edition = "2021"
 authors = ["Bill Fraser <bill@wfraser.dev>"]
 
 [dependencies.dropbox-sdk]
-version = "0.18.0"
+#version = "0.18.0"
+git = "https://github.com/wfraser/dropbox-sdk-rust"
+branch = "async-mode-flaterror"
 default-features = false
 features = ["dbx_files", "default_client"]
-
 
 [dependencies]
 log = "0.4.20"
 parallel_reader = "0.1.2"
 ring = "0.17.5"
+
+[dev-dependencies]
+anyhow = "1.0.86"
