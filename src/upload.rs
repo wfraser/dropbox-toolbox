@@ -90,14 +90,13 @@ struct SessionInner {
 
 impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
     /// Make a new upload session.
-    pub fn new(client: Arc<C>) -> Result<Self, BoxedError> {
+    pub fn new(client: Arc<C>) -> Result<Self, Error<files::UploadSessionStartError>> {
         let session_id = files::upload_session_start(
             client.as_ref(),
             &files::UploadSessionStartArg::default()
                 .with_session_type(files::UploadSessionType::Concurrent),
             &[],
-        )
-        .map_err(Error::boxed)?
+        )?
         .session_id;
 
         Ok(Self {

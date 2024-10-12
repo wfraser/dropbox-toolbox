@@ -4,8 +4,8 @@ use std::collections::VecDeque;
 use std::thread::sleep;
 use std::time::Duration;
 
-use dropbox_sdk::{BoxedError, Error};
-use dropbox_sdk::files::ListFolderContinueError;
+use dropbox_sdk::Error;
+use dropbox_sdk::files::{ListFolderError, ListFolderContinueError};
 use dropbox_sdk::{files, UserAuthClient};
 
 /// Make an iterator that yields directory entries under a given path, optionally recursively.
@@ -13,7 +13,7 @@ pub fn list_directory<'a, T: UserAuthClient>(
     client: &'a T,
     path: &str,
     recursive: bool,
-) -> Result<DirectoryIterator<'a, T>, BoxedError> {
+) -> Result<DirectoryIterator<'a, T>, Error<ListFolderError>> {
     assert!(
         path.starts_with('/'),
         "path needs to be absolute (start with a '/')"
@@ -28,7 +28,7 @@ pub fn list_directory<'a, T: UserAuthClient>(
         client,
         files::list_folder,
         &files::ListFolderArg::new(requested_path).with_recursive(recursive),
-    ).map_err(Error::boxed)?;
+    )?;
     let cursor = if result.has_more {
         Some(result.cursor)
     } else {
