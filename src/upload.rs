@@ -280,7 +280,7 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
                 Err(e) => {
                     errors += 1;
                     if errors == opts.retry_count {
-                        warn!("Error calling upload_session_append: {e}, failing.");
+                        error!("Error calling upload_session_append: {e}, failing.");
                         return Err(e);
                     } else {
                         warn!("Error calling upload_session_append: {e}, retrying.");
