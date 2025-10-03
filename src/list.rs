@@ -4,8 +4,8 @@ use std::collections::VecDeque;
 use std::thread::sleep;
 use std::time::Duration;
 
+use dropbox_sdk::files::{ListFolderContinueError, ListFolderError};
 use dropbox_sdk::Error;
-use dropbox_sdk::files::{ListFolderError, ListFolderContinueError};
 use dropbox_sdk::{files, UserAuthClient};
 
 /// Make an iterator that yields directory entries under a given path, optionally recursively.

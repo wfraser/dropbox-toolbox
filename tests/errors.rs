@@ -1,12 +1,14 @@
-use std::error::Error;
 use anyhow::Context;
 use dropbox_sdk::files::{RelocationError, WriteConflictError, WriteError};
+use std::error::Error;
 
 #[test]
 fn test_downcast_search() {
     fn some_api_call() -> Result<(), dropbox_sdk::Error<RelocationError>> {
         // Whew!
-        Err(dropbox_sdk::Error::Api(RelocationError::FromWrite(WriteError::Conflict(WriteConflictError::File))))
+        Err(dropbox_sdk::Error::Api(RelocationError::FromWrite(
+            WriteError::Conflict(WriteConflictError::File),
+        )))
     }
 
     fn some_complex_fn_anyhow() -> anyhow::Result<()> {

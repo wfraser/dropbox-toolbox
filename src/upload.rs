@@ -9,10 +9,10 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use crate::content_hash::ContentHash;
-use crate::{BLOCK_SIZE, RetryOpts, jitter};
-use dropbox_sdk::{BoxedError, Error};
+use crate::{jitter, RetryOpts, BLOCK_SIZE};
 use dropbox_sdk::files::{self, UploadSessionAppendError, UploadSessionFinishError};
 use dropbox_sdk::UserAuthClient;
+use dropbox_sdk::{BoxedError, Error};
 
 /// Options for how to perform uploads.
 #[derive(Clone)]
