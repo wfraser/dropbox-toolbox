@@ -46,6 +46,22 @@ impl Default for RetryOpts {
     }
 }
 
+impl RetryOpts {
+    /// Perform the delay called for by the retry options, or return false if the max number of
+    /// retries has been reached.
+    pub(crate) fn do_retry(&self, retry: &mut u32, backoff: &mut Duration) -> bool {
+        if *retry >= self.max {
+            return false;
+        }
+        std::thread::sleep(jitter(*backoff));
+        if *backoff < self.max_backoff {
+            *backoff *= 2;
+        }
+        *retry += 1;
+        true
+    }
+}
+
 // Add a random duration in the range [-duration/4, duration/4].
 pub(crate) fn jitter(duration: Duration) -> Duration {
     // The API of the rand crate is nicer, but ring is already in our dependency tree, so use it

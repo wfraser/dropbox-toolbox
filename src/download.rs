@@ -1,11 +1,10 @@
 //! Functions for downloading files.
 
-use crate::{jitter, RetryOpts};
+use crate::RetryOpts;
 use dropbox_sdk::files::{self, DownloadArg, DownloadError, FileMetadata};
 use dropbox_sdk::{Error, UserAuthClient};
 use std::io::{self, Read};
 use std::sync::Arc;
-use std::thread::sleep;
 
 /// A file download in progress.
 pub struct DownloadSession<C> {
@@ -73,7 +72,19 @@ impl<C: UserAuthClient + Send + Sync> DownloadSession<C> {
             Some(start) => Some(start + self.cursor),
             None => Some(self.cursor),
         };
-        let resp = files::download(self.client.as_ref(), &self.arg, range_start, self.range_end)?;
+        let mut backoff = self.retry.initial_backoff;
+        let mut retry = 0;
+        let resp = loop {
+            match files::download(self.client.as_ref(), &self.arg, range_start, self.range_end) {
+                Ok(r) => break r,
+                Err(e) => {
+                    error!("files/download request error: {e}");
+                    if !self.retry.do_retry(&mut retry, &mut backoff) {
+                        return Err(e);
+                    }
+                }
+            }
+        };
         self.body = resp
             .body
             .ok_or_else(|| Error::UnexpectedResponse("response has no body".to_owned()))?;
@@ -87,17 +98,12 @@ impl<C: UserAuthClient + Send + Sync> DownloadSession<C> {
 impl<C: UserAuthClient + Send + Sync> Read for DownloadSession<C> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut backoff = self.retry.initial_backoff;
+        let mut retry = 0;
         let mut err: Option<dropbox_sdk::Error<DownloadError>> = None;
-        for retry in 0.. {
+        loop {
             if let Some(e) = err.take() {
                 error!("download error: {e}");
-                if retry + 1 == self.retry.max {
-                    return Err(io::Error::other(e));
-                }
-                sleep(jitter(backoff));
-                if backoff < self.retry.max_backoff {
-                    backoff *= 2;
-                } else {
+                if !self.retry.do_retry(&mut retry, &mut backoff) {
                     return Err(io::Error::other(e));
                 }
                 err = self.request().err();
@@ -112,6 +118,5 @@ impl<C: UserAuthClient + Send + Sync> Read for DownloadSession<C> {
                 Err(e) => Some(Error::HttpClient(Box::new(e))),
             };
         }
-        unreachable!()
     }
 }

@@ -9,7 +9,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use crate::content_hash::ContentHash;
-use crate::{jitter, RetryOpts, BLOCK_SIZE};
+use crate::{RetryOpts, BLOCK_SIZE};
 use dropbox_sdk::files::{self, UploadSessionAppendError, UploadSessionFinishError};
 use dropbox_sdk::UserAuthClient;
 use dropbox_sdk::{BoxedError, Error};
@@ -266,16 +266,11 @@ impl<C: UserAuthClient + Send + Sync + 'static> UploadSession<C> {
                     }
                 }
                 Err(e) => {
-                    errors += 1;
-                    if errors == opts.retry.max {
+                    if !opts.retry.do_retry(&mut errors, &mut backoff) {
                         error!("Error calling upload_session_append: {e}, failing.");
                         return Err(e);
                     } else {
                         warn!("Error calling upload_session_append: {e}, retrying.");
-                    }
-                    sleep(jitter(backoff));
-                    if backoff < opts.retry.max_backoff {
-                        backoff *= 2;
                     }
                 }
             }
