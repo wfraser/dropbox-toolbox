@@ -10,6 +10,7 @@ default-features = false
 features = ["dbx_files", "default_client"]
 
 [dependencies]
+combine-structs = "0.1.1"
 log = "0.4.20"
 parallel_reader = "0.1.2"
 ring = "0.17.5"

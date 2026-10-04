@@ -10,7 +10,9 @@
 #[macro_use]
 extern crate log;
 
+mod _common;
 pub mod content_hash;
+pub mod download;
 pub mod list;
 pub mod upload;
 
