@@ -91,6 +91,7 @@ impl<C: UserAuthClient + Send + Sync> DownloadSession<C> {
         self.content_length = resp.content_length.ok_or_else(|| {
             Error::UnexpectedResponse("response has no content-length".to_owned())
         })?;
+        self.metadata = resp.result;
         Ok(())
     }
 }
